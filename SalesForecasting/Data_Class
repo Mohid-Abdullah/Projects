@@ -1,0 +1,26 @@
+import warnings
+warnings.filterwarnings("ignore")
+# Remove AWS JAR references since they're not needed for local CSV processing
+# os.environ["PYSPARK_SUBMIT_ARGS"] = "--jars jars/hadoop-aws-3.3.1.jar,jars/aws-java-sdk-bundle-1.11.1026.jar pyspark-shell"
+from pyspark.sql import DataFrameNaFunctions, SparkSession  
+from pyspark.sql.functions import col, lit, lower, when, to_date, sum
+from pyspark.sql.window import Window
+from pyspark.ml.feature import Imputer
+
+session = SparkSession.builder.appName("DataClass").master("local[*]").getOrCreate()
+
+df = session.read.option("header", "true").option("inferSchema", "true").csv("Sample - Superstore.csv")
+
+print("Dataset schema:")
+df.printSchema()
+
+nullCols = df.select([sum(when(col(c).isNull(), 1).otherwise(0)).alias(c) for c in df.columns])
+nullDict = nullCols.collect()[0].asDict()
+for a,b in nullDict.items():
+    if b == 0:
+        continue
+    else:
+        print(f"{a}:{b}")
+
+df = df.select()
+df = df.dropDuplicates()
